@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Roleta do Sorteio</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a0033, #330066, #4b0082);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 10px 0 20px;
+      font-size: 2.8rem;
+      text-shadow: 0 0 15px #ff00cc, 0 0 30px #ff00cc;
+      letter-spacing: 1px;
+    }
+    #edit-panel {
+      background: rgba(0,0,0,0.6);
+      border: 3px solid #ff00aa;
+      border-radius: 20px;
+      padding: 20px;
+      width: 90%;
+      max-width: 520px;
+      margin-bottom: 30px;
+      box-shadow: 0 0 30px rgba(255,0,170,0.7);
+    }
+    #edit-panel h2 {
+      margin: 0 0 15px;
+      font-size: 1.5rem;
+      text-align: center;
+      color: #ffccff;
+    }
+    textarea {
+      width: 100%;
+      height: 160px;
+      background: #220044;
+      color: #fff;
+      border: 2px solid #ff66cc;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 1.15rem;
+      resize: vertical;
+      font-family: monospace;
+    }
+    #update-btn {
+      margin-top: 15px;
+      width: 100%;
+      padding: 16px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      background: linear-gradient(#ff00aa, #cc0099);
+      color: white;
+      border: none;
+      border-radius: 60px;
+      cursor: pointer;
+      box-shadow: 0 0 25px #ff00aa;
+      transition: all 0.3s;
+    }
+    #update-btn:hover {
+      background: linear-gradient(#ff33cc, #ff0099);
+      transform: scale(1.04);
+      box-shadow: 0 0 40px #ff33cc;
+    }
+    .wheel-container {
+      position: relative;
+      width: 380px;
+      height: 380px;
+      margin: 20px 0;
+    }
+    #wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(255,0,170,0.9), inset 0 0 30px rgba(0,0,0,0.8);
+      border: 14px solid #ff00aa;
+      background: #000;
+    }
+    #spin {
+      margin: 35px 0 25px;
+      padding: 20px 90px;
+      font-size: 1.9rem;
+      font-weight: bold;
+      background: linear-gradient(#ff00aa, #cc0099);
+      color: white;
+      border: none;
+      border-radius: 70px;
+      cursor: pointer;
+      box-shadow: 0 0 30px #ff00aa;
+      transition: all 0.3s;
+    }
+    #spin:hover {
+      background: linear-gradient(#ff33cc, #ff0099);
+      transform: translateY(-4px);
+      box-shadow: 0 0 50px #ff33cc;
+    }
+    #result {
+      font-size: 2.4rem;
+      font-weight: bold;
+      min-height: 90px;
+      text-align: center;
+      text-shadow: 0 0 20px #00ffff, 0 0 35px #00ffff;
+      padding: 0 20px;
+    }
+    @media (max-width: 500px) {
+      .wheel-container { width: 340px; height: 340px; }
+      h1 { font-size: 2.3rem; }
+      #spin { padding: 16px 70px; font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Roleta do Sorteio</h1>
+
+  <div id="edit-panel">
+    <h2>Edite os participantes (um por linha)</h2>
+    <textarea id="names-input" placeholder="Cole os nomes aqui, um por linha..."></textarea>
+    <button id="update-btn">Atualizar Roleta</button>
+  </div>
+
+  <div class="wheel-container">
+    <canvas id="wheel" width="380" height="380"></canvas>
+  </div>
+
+  <button id="spin">GIRAR ROLETA!</button>
+
+  <div id="result">Clique em GIRAR para começar... 🎲</div>
+
+  <script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spin');
+    const resultDiv = document.getElementById('result');
+    const namesInput = document.getElementById('names-input');
+    const updateBtn = document.getElementById('update-btn');
+
+    let participantes = [
+      "arthur",
+      "atn7x_P",
+      "atnX_P",
+      "alezin",
+      "max_geral192",
+      "alison"
+    ];
+
+    const colors = [
+      '#FF3366', '#33FFCC', '#FFCC33', '#9933FF', '#33FF99',
+      '#FF6633', '#66CCFF', '#CC33FF', '#FF3399', '#00FF66'
+    ];
+
+    let startAngle = 0;
+    let spinning = false;
+    let arc = 0;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = canvas.width / 2 - 7;
+
+    function updateWheel() {
+      const text = namesInput.value.trim();
+      if (text) {
+        participantes = text.split('\n').map(n => n.trim()).filter(n => n);
+      }
+      if (participantes.length === 0) participantes = ["Adicione nomes!"];
+      arc = (2 * Math.PI) / participantes.length;
+      drawWheel();
+      resultDiv.textContent = "Roleta atualizada! Pode girar 🎉";
+    }
+
+    function drawWheel() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      for (let i = 0; i < participantes.length; i++) {
+        const angle = startAngle + i * arc;
+        
+        ctx.beginPath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angle, angle + arc);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 17px Arial';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 10;
+        ctx.fillText(participantes[i].toUpperCase(), radius - 25, 8);
+        ctx.restore();
+      }
+    }
+
+    function spin() {
+      if (spinning || participantes.length < 1) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      resultDiv.textContent = "Girando... 🔥";
+
+      const extraSpins = Math.floor(Math.random() * 5) + 12;
+      const randomExtra = Math.random() * 2 * Math.PI;
+      const totalRotation = extraSpins * 2 * Math.PI + randomExtra;
+      const duration = 7000 + Math.random() * 4000;
+
+      const startTime = performance.now();
+
+      function animate(time) {
+        const elapsed = time - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 5);
+        
+        startAngle = totalRotation * ease;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          spinning = false;
+          spinBtn.disabled = false;
+
+          // Sem seta: vencedor é a fatia que para no topo (posição 12h)
+          const finalAngle = startAngle % (2 * Math.PI);
+          let winningIndex = Math.floor( (participantes.length - (finalAngle / arc)) ) % participantes.length;
+          if (winningIndex < 0) winningIndex += participantes.length;
+
+          const vencedor = participantes[winningIndex];
+
+          resultDiv.innerHTML = `Vencedor: ${vencedor} 🎉🍾✨`;
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    updateBtn.addEventListener('click', updateWheel);
+    spinBtn.addEventListener('click', spin);
+
+    namesInput.value = participantes.join('\n');
+    drawWheel();
+  </script>
+
+</body>
+</html>
